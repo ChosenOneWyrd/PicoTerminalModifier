@@ -2,6 +2,7 @@ PyQt5
 pillow
 pyinstaller
 numpy
-wave
 imagequant
 pytesseract
+requests
+beautifulsoup4
