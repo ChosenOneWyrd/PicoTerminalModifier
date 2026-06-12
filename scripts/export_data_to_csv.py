@@ -77,7 +77,7 @@ def main():
         for filename, row_index, row in all_rows:
             writer.writerow([filename, row_index] + ensure_len(row, len(data_cols)))
 
-    print(f"Exported {len(files)} data file(s), {len(all_rows)} rows → {csv_path}")
+    print(f"Exported {len(files)} data file(s), {len(all_rows)} rows -> {csv_path}")
     print(f"Detected {max_cols} columns.")
 
 if __name__ == "__main__":
