@@ -608,7 +608,6 @@ MANUAL_NAME_FIXES = {
 # -----------------------------
 # GENERATED ANALYZER CACHE
 # -----------------------------
-BASE_DIR = Path(sys._MEIPASS)
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys._MEIPASS)
 else:

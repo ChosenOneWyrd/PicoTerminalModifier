@@ -15,6 +15,11 @@ import requests
 import traceback
 import contextlib
 
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys._MEIPASS)
+else:
+    BASE_DIR = Path(__file__).resolve().parent
+
 COLS = [
     "katakana",
     "link",
@@ -1043,10 +1048,19 @@ def process_device(
     return all_failed
 
 def main():
+    PROJECT_ROOT = BASE_DIR.parent
+    
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--analyzer-script", default="make_digimon_analyzer_images.py")
-    parser.add_argument("--template", default="Digimon_analyzer_blank.jpg")
+    parser.add_argument(
+        "--analyzer-script",
+        default=str(BASE_DIR / "make_digimon_analyzer_images.py"),
+    )
+
+    parser.add_argument(
+        "--template",
+        default=str(BASE_DIR / "Digimon_analyzer_blank.jpg"),
+    )
 
     parser.add_argument("--device", default="d3c")
     parser.add_argument(
@@ -1055,7 +1069,10 @@ def main():
         help="Process all device folders under sd/data that also exist under sd/gfx/cutin",
     )
 
-    parser.add_argument("--workdir", default="generated_analyzer_cutins")
+    parser.add_argument(
+        "--workdir",
+        default=str(PROJECT_ROOT / "generated_analyzer_cutins"),
+    )
     parser.add_argument("--out-root", default=None)
 
     parser.add_argument("--fit", choices=["pad", "stretch", "crop"], default="pad")
@@ -1067,7 +1084,10 @@ def main():
     parser.add_argument("--debug", action="store_true")
 
     parser.add_argument("--data-source", choices=["wikimon", "terminal"], default="terminal")
-    parser.add_argument("--profile-root", default="sd/profile")
+    parser.add_argument(
+        "--profile-root",
+        default=str(PROJECT_ROOT / "sd" / "profile"),
+    )
 
     args = parser.parse_args()
 
@@ -1075,8 +1095,8 @@ def main():
     workdir.mkdir(parents=True, exist_ok=True)
 
     if args.all_devices:
-        data_root = Path("sd/data")
-        cutin_root = Path("sd/gfx/cutin")
+        data_root = PROJECT_ROOT / "sd" / "data"
+        cutin_root = PROJECT_ROOT / "sd" / "gfx" / "cutin"
 
         devices = []
         for folder in sorted(data_root.iterdir(), key=lambda p: p.name.lower()):

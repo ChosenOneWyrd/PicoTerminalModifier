@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from collections import defaultdict
 
-NUMERIC_COLS = {
+BASE_NUMERIC_COLS = {
     "level", "attribute", "field_or_stage", "power",
     "stat1", "stat2", "attack1", "attack2",
     "extra1", "extra2",
@@ -23,7 +23,7 @@ NUMERIC_COLS = {
 def fail(errors, row_num, field, msg):
     errors.append(f"CSV row {row_num}, {field}: {msg}")
 
-def validate_row(row, row_num, data_cols, errors):
+def validate_row(row, row_num, data_cols, errors, numeric_cols):
     if not row.get("file", "").endswith(".data"):
         fail(errors, row_num, "file", "must end with .data")
 
@@ -41,7 +41,7 @@ def validate_row(row, row_num, data_cols, errors):
             fail(errors, row_num, col, "missing column")
             continue
 
-        if col in NUMERIC_COLS:
+        if col in numeric_cols:
             value = row[col].strip()
             if value == "":
                 fail(errors, row_num, col, "cannot be blank")
@@ -65,6 +65,13 @@ def main():
     output_folder = Path(output_folder)
     errors = []
     by_file = defaultdict(list)
+    device_name = output_folder.name.lower()
+
+    numeric_cols = set(BASE_NUMERIC_COLS)
+
+    # PenZ allows non-numeric attribute values
+    if device_name == "penz":
+        numeric_cols.discard("attribute")
 
     with open(csv_path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
@@ -81,7 +88,7 @@ def main():
         data_cols = reader.fieldnames[2:]
 
         for row_num, row in enumerate(reader, start=2):
-            validate_row(row, row_num, data_cols, errors)
+            validate_row(row, row_num, data_cols, errors, numeric_cols)
             by_file[row["file"]].append(row)
 
     if errors:
