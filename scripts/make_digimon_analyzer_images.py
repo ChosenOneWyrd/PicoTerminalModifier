@@ -140,6 +140,10 @@ ANIME_IMAGE_KEYWORD_RULES = [
     ("contains", "XW73_Plesiomon"),
     ("contains", "DF45_Pteranomon"),
     ("contains", "Pupumon_DB01"),
+    ("contains", "Ruki_Renamon_DT03"),
+    ("contains", "300px-Rizegreymon_Savers"),
+    ("contains", "Sunflowmon_and_Yoshino"),
+    ("contains", "600px-Lou"),
     ("contains", "Adv02"),
     ("contains", "ZT"),
     ("regex", r"EP\d+"),
@@ -231,7 +235,7 @@ SKIP_IMAGE_KEYWORDS = {"card", "DM0", "battle", "PSP", "psp", "shikishi", "fanta
                        "_character_sheet", "Da-5", "DG1-", "Early_desgin", "Turuiemon_mikemon", "Seekers_1-17_Crowd", ""
                        "Omegamon_zwart_new_century", "OmegamonVSOmegamon_zwart_crusader", "vpet_vb", "PawnChessmon_saversfigurecubemini_box",
                        "Yatagaramon_2006_analyzer_Ghost_Game", "PlesiomonX_RE_Collectors_Card", "Plesiomonx_new_century", "XW73_Dagomon_plesiomon",
-                       "_promo", "DCG_", "_deck", "Pteromon_first"}
+                       "_promo", "DCG_", "_deck", "Pteromon_first", "600px-DA2020_Digimon_inhabitants_5"}
 
 
 MANUAL_NAME_FIXES = {
@@ -515,6 +519,7 @@ MANUAL_NAME_FIXES = {
     "ravmonburstmode": "Ravmon:_Burst_Mode",
     "redvegimon": "Red_Vegimon",
     "renamonx": "Renamon_(X-Antibody)",
+    "renamon": "Renamon",
     "hoverespimon": "Hover_Espimon",
     "karatukinumemon": "Karatuki_Numemon",
     "kingwhamon": "King_Whamon",
