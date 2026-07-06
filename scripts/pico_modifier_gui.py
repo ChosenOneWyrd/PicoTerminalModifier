@@ -63,11 +63,18 @@ if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys._MEIPASS)
     SCRIPT_DIR = BASE_DIR / "scripts"
 
-    # Folder containing the .app bundle
-    APP_ROOT = Path(sys.executable).resolve().parents[3]
+    exe_path = Path(sys.executable).resolve()
 
-    # Use embedded python executable inside the app
-    PYTHON_EXE = str(Path(sys.executable).resolve())
+    # macOS .app bundle
+    if sys.platform == "darwin" and ".app" in str(exe_path):
+        APP_ROOT = exe_path.parents[3]
+
+    # Windows/Linux standalone executable
+    else:
+        APP_ROOT = exe_path.parent
+
+    # Use embedded executable
+    PYTHON_EXE = str(exe_path)
 
 else:
     SCRIPT_DIR = Path(__file__).resolve().parent
