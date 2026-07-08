@@ -726,11 +726,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Pico Terminal Modifier GUI")
         self.resize(980, 700)
         tabs = QtWidgets.QTabWidget()
-        tabs.addTab(DataTab(), "Data")
         tabs.addTab(SpritesTab(), "Sprites")
         tabs.addTab(CutinsTab(), "Cut-ins")
-        tabs.addTab(ProfileImagesTab(), "Profile Images")
         tabs.addTab(AnalyzerCutinsTab(), "Digimon Analyzer Cut-ins")
+        tabs.addTab(ProfileImagesTab(), "Profile Images")
+        tabs.addTab(DataTab(), "Data")
         self.setCentralWidget(tabs)
 
 
@@ -779,16 +779,25 @@ def run_embedded_script():
         # Remove script argument from argv
         sys.argv = [script_name] + sys.argv[2:]
 
-        # Import module dynamically instead of runpy.run_path
         import importlib
 
-        module = importlib.import_module(f"scripts.{script_name}")
+        try:
+            module = importlib.import_module(f"scripts.{script_name}")
 
-        # Run module main() if present
-        if hasattr(module, "main"):
-            module.main()
+            if hasattr(module, "main"):
+                module.main()
 
-        sys.exit(0)
+            sys.exit(0)
+
+        except SystemExit:
+            raise
+
+        except Exception:
+            # IMPORTANT:
+            # Do not print traceback here.
+            # The parent script make_and_import_all_analyzer_cutins.py already captures
+            # stdout/stderr and writes details into error.log.
+            sys.exit(1)
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

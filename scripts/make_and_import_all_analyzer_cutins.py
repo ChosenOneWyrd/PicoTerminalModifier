@@ -66,7 +66,8 @@ MANUAL_NAME_FIXES = {
     "cherubimongood": "Cherubimon_(Virtue)",
     "cherubimon": "Cherubimon_(Virtue)",
     "scumon": "Scumon",
-    "okuwamon": "Okuwamon",
+    "oukuwamon": "Okuwamon",
+    "ageisdramon": "Aegisdramon",
     "fujitsumon": "Octmon",
     "agumon2006": "Agumon_(2006_Anime_Version)",
     "agumonbx": "Agumon_(Black)_(X-Antibody)",
@@ -75,9 +76,13 @@ MANUAL_NAME_FIXES = {
     "agumonhakase": "Agumon_Hakase",
     "algomonlv1": "Algomon_(Baby_I)",
     "algomonlv2": "Algomon_(Baby_II)",
+    "ALGOMON_IN-TRAININGⅡ": "Algomon_(Baby_II)",
     "algomonlv3": "Algomon_(Child)",
+    "ALGOMON_ROOKIE": "Algomon_(Child)",
     "algomonlv4": "Algomon_(Adult)",
+    "ALGOMON_CHAMPION": "Algomon_(Adult)",
     "algomonultimate": "Algomon_(Ultimate)",
+    "ALGOMON_MEGA": "Algomon_(Ultimate)",
     "allomonx": "Allomon_(X-Antibody)",
     "ancientbeatmon": "Ancient_Beatmon",
     "ancienttroiamon": "Ancient_Troiamon",
@@ -153,6 +158,7 @@ MANUAL_NAME_FIXES = {
     "blacktailmonuver": "Black_Tailmon_Uver.",
     "blackwargreymonx": "Black_War_Greymon_(X-Antibody)",
     "burninggreymon": "Vritramon",
+    "Brakimon": "Brachimon",
     "capromon": "Caprimon",
     "cerberumonx": "Cerberumon_(X-Antibody)",
     "chaosdramonx": "Chaosdramon_(X-Antibody)",
@@ -269,6 +275,9 @@ MANUAL_NAME_FIXES = {
     "kuzuhamonmiko": "Kuzuhamon:_Miko_Mode",
     "ladydevimonx": "Lady_Devimon_(X-Antibody)",
     "leomonx": "Leomon_(X-Antibody)",
+    "LOADERLIOMON": "Loader_Leomon",
+    "loaderliomon": "Loader_Leomon",
+    "loaderleomon": "Loader_Leomon",
     "leviamonx": "Leviamon_(X-Antibody)",
     "lilimonx": "Lilimon_(X-Antibody)",
     "lilithmonx": "Lilithmon_(X-Antibody)",
@@ -333,10 +342,21 @@ MANUAL_NAME_FIXES = {
     "rapidmonx": "Rapidmon_(X-Antibody)",
     "raptorsparrowmon": "Raptor_Sparrowmon",
     "rareraremon": "Rare_Raremon",
-    "rasenmonf": "Rasenmon_FM",
+    "rasenmonf": "Rasenmon:_Fury_Mode",
     "ravmonburstmode": "Ravmon:_Burst_Mode",
     "redvegimon": "Red_Vegimon",
+    "redvagimon": "Red_Vegimon",
     "renamonx": "Renamon_(X-Antibody)",
+    "renammon": "Renamon",
+    "renamon": "Renamon",
+    "Cernumon": "Cernumon",
+    "Fukamon": "Fukamon",
+    "Kakamon": "Kakamon",
+    "Fujamon": "Fujamon",
+    "Rasenmon_Fury_Mode": "Rasenmon:_Fury_Mode",
+    "Rasenmon Fury Mode": "Rasenmon:_Fury_Mode",
+    "rasenmonfurymode": "Rasenmon:_Fury_Mode",
+    "pukummon": "Pukumon",
     "hoverespimon": "Hover_Espimon",
     "karatukinumemon": "Karatuki_Numemon",
     "kingwhamon": "King_Whamon",
@@ -393,6 +413,7 @@ MANUAL_NAME_FIXES = {
     "splashmon2": "Splashmon",
     "tailmonx": "Tailmon_(X-Antibody)",
     "takutoumonwrath": "Takutoumon:_Wrath_Mode",
+    "Takutoumon:wrathmode": "Takutoumon:_Wrath_Mode",
     "taowumon": "Taomon",
     "terriermonx": "Terriermon_(X-Antibody)",
     "teslajellymon": "Tesla_Jellymon",
@@ -406,7 +427,11 @@ MANUAL_NAME_FIXES = {
     "ultimatebrakimon": "Ultimate_Brachimon",
     "vdramon": "V-dramon",
     "vamdemonx": "Vamdemon_(X-Antibody)",
+    "Vemmon": "BEMmon",
     "waregarurumonsagittarius": "Were_Garurumon:_Sagittarius_Mode",
+    "Waregarurumon:Sagittarius Mode": "Were_Garurumon:_Sagittarius_Mode",
+    "Waregarurumon:SagittariusMode": "Were_Garurumon:_Sagittarius_Mode",
+    "WaregarurumonSagittariusMode": "Were_Garurumon:_Sagittarius_Mode",
     "wargreymonx": "War_Greymon_(X-Antibody)",
     "weregarrumon": "Were_Garurumon",
     "weregarurumonblack": "Were_Garurumon_(Black)",
@@ -454,6 +479,37 @@ def log_error(message="", exc=None):
             traceback.print_exception(type(exc), exc, exc.__traceback__, file=f)
 
         f.write("\n")
+
+def safe_digimon_name_match_score(input_key: str, api_key: str) -> int:
+    """
+    Prevent bad short substring matches like:
+        Okuwamon -> Amon
+
+    Exact matches still win.
+    Longer partial matches are still allowed for names like:
+        Imperialdramon Paladin Mode -> Imperialdramon(Paladin Mode)
+    """
+    if not input_key or not api_key:
+        return -1
+
+    if api_key == input_key:
+        return 10000
+
+    # Never allow tiny names like "amon" to match inside longer names like "okuwamon".
+    if len(input_key) < 5 or len(api_key) < 5:
+        return -1
+
+    if input_key in api_key:
+        coverage = len(input_key) / max(1, len(api_key))
+        if len(input_key) >= 6 and coverage >= 0.65:
+            return 8000 + len(input_key)
+
+    if api_key in input_key:
+        coverage = len(api_key) / max(1, len(input_key))
+        if len(api_key) >= 6 and coverage >= 0.75:
+            return 7000 + len(api_key)
+
+    return -1
 
 def normalize_api_name(s):
     return re.sub(r"[^a-z0-9]", "", str(s).lower())
@@ -522,14 +578,7 @@ def resolve_analyzer_search_name(raw_name):
             if not akey:
                 continue
 
-            score = -1
-
-            if akey == ckey:
-                score = 10000
-            elif ckey in akey:
-                score = 8000 + len(ckey)
-            elif akey in ckey:
-                score = 7000 + len(akey)
+            score = safe_digimon_name_match_score(ckey, akey)
 
             if score > best_score:
                 best_score = score
@@ -606,11 +655,11 @@ def run_analyzer(
         stderr=subprocess.PIPE,
     )
 
-    if result.stdout:
-        print(result.stdout, end="")
-
-    if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
+    if result.returncode == 0:
+        if result.stdout:
+            print(result.stdout, end="")
+        if result.stderr:
+            print(result.stderr, end="", file=sys.stderr)
 
     if result.returncode != 0:
         with open(ERROR_LOG_PATH, "a", encoding="utf-8") as f:
@@ -1047,8 +1096,29 @@ def process_device(
 
     return all_failed
 
+def get_project_root() -> Path:
+    if getattr(sys, "frozen", False):
+        exe_path = Path(sys.executable).resolve()
+
+        # macOS .app:
+        # YourApp.app/Contents/MacOS/YourExecutable
+        # We want the folder containing YourApp.app, where your sd folder lives.
+        if sys.platform == "darwin" and ".app" in str(exe_path):
+            return exe_path.parents[3]
+
+        # Windows/Linux onefile/onedir:
+        # use folder beside the exe.
+        return exe_path.parent
+
+    # Normal python scripts:
+    # scripts/make_and_import_all_analyzer_cutins.py -> project root
+    return Path(__file__).resolve().parent.parent
+
+
 def main():
-    PROJECT_ROOT = BASE_DIR.parent
+    PROJECT_ROOT = get_project_root()
+    import os
+    os.chdir(PROJECT_ROOT)
     
     parser = argparse.ArgumentParser()
 
