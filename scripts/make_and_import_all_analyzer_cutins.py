@@ -14,6 +14,22 @@ from PIL import Image
 import requests
 import traceback
 import contextlib
+import os
+
+def configure_windows_utf8_stdio():
+    os.environ.setdefault("PYTHONUTF8", "1")
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+configure_windows_utf8_stdio()
 
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys._MEIPASS)
@@ -519,11 +535,25 @@ def get_digi_api_rows():
     if _DIGI_API_ROWS is not None:
         return _DIGI_API_ROWS
 
-    r = requests.get(DIGI_API_LIST_URL, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    _DIGI_API_ROWS = data.get("content", [])
-    return _DIGI_API_ROWS
+    try:
+        r = requests.get(DIGI_API_LIST_URL, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        _DIGI_API_ROWS = data.get("content", [])
+        return _DIGI_API_ROWS
+
+    except Exception as e:
+        # Important:
+        # Digi-API is only used to improve name matching.
+        # If it fails on Windows, do NOT kill the whole import process.
+        _DIGI_API_ROWS = []
+
+        try:
+            log_error("WARNING: Could not load Digi-API list. Falling back to local/manual names.", e)
+        except Exception:
+            pass
+
+        return []
 
 def resolve_analyzer_search_name(raw_name):
     original = str(raw_name).strip()
@@ -564,6 +594,8 @@ def resolve_analyzer_search_name(raw_name):
             clean_candidates.append(c)
 
     api_rows = get_digi_api_rows()
+    if not api_rows:
+        return original
 
     best_name = original
     best_score = -1
@@ -648,11 +680,19 @@ def run_analyzer(
     if debug:
         cmd.append("--debug")
 
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+
     result = subprocess.run(
         cmd,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=env,
     )
 
     if result.returncode == 0:
@@ -813,19 +853,22 @@ def process_table(
     for slot_id in range(start, end):
         row = rows[slot_id]
         digimon_name = choose_digimon_name(row)
-        search_name = resolve_analyzer_search_name(digimon_name)
-
+        
         if not digimon_name:
             print(f"[{label} {slot_id:03d}] SKIP: empty name")
             continue
 
-        base = safe_name(digimon_name)
-        jpg_out = jpg_dir / f"{label}_{slot_id:03d}_{base}.jpg"
-        bmp_out = bmp_dir / f"{label}_{slot_id:03d}_{base}.bmp"
-
-        print(f"[{label} {slot_id:03d}] {digimon_name} -> {search_name}")
+        search_name = digimon_name
 
         try:
+            search_name = resolve_analyzer_search_name(digimon_name)
+
+            base = safe_name(digimon_name)
+            jpg_out = jpg_dir / f"{label}_{slot_id:03d}_{base}.jpg"
+            bmp_out = bmp_dir / f"{label}_{slot_id:03d}_{base}.bmp"
+
+            print(f"[{label} {slot_id:03d}] {digimon_name} -> {search_name}")
+
             if skip_existing and bmp_out.exists():
                 print("  using existing BMP")
             else:
@@ -982,15 +1025,17 @@ def process_device_file(
             print(f"[{device}/{label} {slot_id:03d}] SKIP: empty name")
             continue
 
-        search_name = resolve_analyzer_search_name(digimon_name)
-
-        base = safe_name(digimon_name)
-        jpg_out = jpg_dir / f"{label}_{slot_id:03d}_{base}.jpg"
-        bmp_out = bmp_dir / f"{label}_{slot_id:03d}_{base}.bmp"
-
-        print(f"[{device}/{label} {slot_id:03d}] {digimon_name} -> {search_name}")
+        search_name = digimon_name
 
         try:
+            search_name = resolve_analyzer_search_name(digimon_name)
+
+            base = safe_name(digimon_name)
+            jpg_out = jpg_dir / f"{label}_{slot_id:03d}_{base}.jpg"
+            bmp_out = bmp_dir / f"{label}_{slot_id:03d}_{base}.bmp"
+
+            print(f"[{device}/{label} {slot_id:03d}] {digimon_name} -> {search_name}")
+
             if skip_existing and bmp_out.exists():
                 print("  using existing BMP")
             else:

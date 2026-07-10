@@ -212,6 +212,8 @@ class ProcessDialog(QtWidgets.QDialog):
         self.process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
         env = QtCore.QProcessEnvironment.systemEnvironment()
         env.insert("PYTHONUNBUFFERED", "1")
+        env.insert("PYTHONUTF8", "1")
+        env.insert("PYTHONIOENCODING", "utf-8")
         self.process.setProcessEnvironment(env)
         self.process.readyReadStandardOutput.connect(self._read_output)
         self.process.errorOccurred.connect(self._error)
