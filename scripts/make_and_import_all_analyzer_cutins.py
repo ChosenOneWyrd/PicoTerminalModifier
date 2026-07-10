@@ -598,7 +598,7 @@ def safe_name(name):
 def export_to_csv(data_path, csv_path):
     rows = []
 
-    for line in Path(data_path).read_text(encoding="utf-8").splitlines():
+    for line in read_text_flexible(Path(data_path)).splitlines():
         row = line.split("\t")
         while len(row) < len(COLS):
             row.append("")
@@ -651,6 +651,8 @@ def run_analyzer(
     result = subprocess.run(
         cmd,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -887,15 +889,48 @@ def data_sort_key(path: Path):
         return path.stem.lower()
 
 
+def read_text_flexible(path: Path) -> str:
+    data = path.read_bytes()
+
+    encodings = [
+        "utf-8-sig",
+        "utf-8",
+        "cp932",
+        "shift_jis",
+        "latin-1",
+    ]
+
+    last_error = None
+
+    for enc in encodings:
+        try:
+            return data.decode(enc)
+        except UnicodeDecodeError as e:
+            last_error = e
+
+    # Should almost never happen because latin-1 can decode any byte,
+    # but keep a clear error just in case.
+    raise UnicodeDecodeError(
+        "unknown",
+        data,
+        0,
+        len(data),
+        f"Could not decode {path}: {last_error}",
+    )
+
+
 def load_data_rows(data_path: Path):
     rows = []
-    for line in data_path.read_text(encoding="utf-8").splitlines():
+
+    text = read_text_flexible(data_path)
+
+    for line in text.splitlines():
         cols = line.split("\t")
         while len(cols) < len(COLS):
             cols.append("")
         rows.append(dict(zip(COLS, cols[:len(COLS)])))
-    return rows
 
+    return rows
 
 def find_device_pairs(device: str):
     data_root = Path("sd/data") / device
