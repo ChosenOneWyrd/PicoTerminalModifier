@@ -52,12 +52,55 @@ import shutil
 
 import pytesseract
 
-if getattr(sys, "frozen", False):
-    tesseract_path = Path(sys._MEIPASS) / "tesseract"
-else:
-    tesseract_path = Path("third_party/tesseract")
+def configure_tesseract_for_gui():
+    import os
+    import shutil
 
-pytesseract.pytesseract.tesseract_cmd = str(tesseract_path)
+    candidates = []
+
+    env_cmd = os.environ.get("TESSERACT_CMD", "").strip()
+    if env_cmd:
+        candidates.append(Path(env_cmd))
+
+    if getattr(sys, "frozen", False):
+        base = Path(sys._MEIPASS)
+        if sys.platform == "win32":
+            candidates.append(base / "tesseract.exe")
+        else:
+            candidates.append(base / "tesseract")
+    else:
+        if sys.platform == "win32":
+            candidates.append(Path("third_party") / "tesseract.exe")
+            candidates.append(Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"))
+            candidates.append(Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"))
+        else:
+            candidates.append(Path("third_party") / "tesseract")
+
+    found = shutil.which("tesseract")
+    if found:
+        candidates.append(Path(found))
+
+    for path in candidates:
+        if path.exists():
+            pytesseract.pytesseract.tesseract_cmd = str(path)
+
+            tessdata_candidates = [
+                path.parent / "tessdata",
+                Path("third_party") / "tessdata",
+            ]
+
+            if getattr(sys, "frozen", False):
+                tessdata_candidates.append(Path(sys._MEIPASS) / "tessdata")
+
+            for tessdata in tessdata_candidates:
+                if tessdata.exists():
+                    os.environ.setdefault("TESSDATA_PREFIX", str(tessdata))
+                    break
+
+            return
+
+
+configure_tesseract_for_gui()
 
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys._MEIPASS)

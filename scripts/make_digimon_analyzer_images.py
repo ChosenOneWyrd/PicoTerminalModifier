@@ -23,6 +23,8 @@ from bs4 import BeautifulSoup, Tag
 from PIL import Image, ImageDraw, ImageFont
 import traceback
 import contextlib
+import os
+import shutil
 
 WIKIMON_BASE = "https://wikimon.net/"
 WIKIMON_API = "https://wikimon.net/api.php"
@@ -908,6 +910,128 @@ def list_profile_bins(profile_root: Path) -> List[Path]:
 
     return sorted(bins, key=lambda p: str(p).lower())
 
+_TESSERACT_TESSDATA_DIR = None
+
+
+def configure_tesseract():
+    global _TESSERACT_TESSDATA_DIR
+
+    import os
+    import shutil
+    import subprocess
+    import pytesseract
+
+    candidates = []
+
+    env_cmd = os.environ.get("TESSERACT_CMD", "").strip()
+    if env_cmd:
+        candidates.append(Path(env_cmd))
+
+    if getattr(sys, "frozen", False):
+        base = Path(sys._MEIPASS)
+
+        if sys.platform == "win32":
+            candidates += [
+                base / "tesseract_win" / "tesseract.exe",
+                base / "tesseract.exe",
+            ]
+        else:
+            candidates += [
+                base / "tesseract",
+            ]
+    else:
+        # In your normal project:
+        # C:\PicoTerminalModifier\scripts\make_digimon_analyzer_images.py
+        # BASE_DIR should be C:\PicoTerminalModifier
+        if sys.platform == "win32":
+            candidates += [
+                BASE_DIR / "third_party" / "tesseract_win" / "tesseract.exe",
+                BASE_DIR / "third_party" / "tesseract.exe",
+                Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
+                Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"),
+            ]
+        else:
+            candidates += [
+                BASE_DIR / "third_party" / "tesseract",
+            ]
+
+    found = shutil.which("tesseract")
+    if found:
+        candidates.append(Path(found))
+
+    tried = []
+
+    for path in candidates:
+        if not path.exists():
+            continue
+
+        env = os.environ.copy()
+
+        # Important for Windows portable Tesseract:
+        # its DLLs are usually beside tesseract.exe.
+        env["PATH"] = str(path.parent) + os.pathsep + env.get("PATH", "")
+
+        tessdata_candidates = [
+            path.parent / "tessdata",
+            path.parent.parent / "tessdata",
+            BASE_DIR / "third_party" / "tessdata",
+        ]
+
+        if getattr(sys, "frozen", False):
+            tessdata_candidates += [
+                Path(sys._MEIPASS) / "tessdata",
+                Path(sys._MEIPASS) / "tesseract_win" / "tessdata",
+            ]
+
+        tessdata_dir = None
+        for td in tessdata_candidates:
+            if (td / "eng.traineddata").exists():
+                tessdata_dir = td
+                break
+
+        if tessdata_dir:
+            env["TESSDATA_PREFIX"] = str(tessdata_dir)
+
+        try:
+            test = subprocess.run(
+                [str(path), "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                errors="replace",
+                env=env,
+                timeout=10,
+            )
+        except Exception as e:
+            tried.append(f"{path} -> could not run: {e}")
+            continue
+
+        if test.returncode != 0:
+            tried.append(
+                f"{path} -> return code {test.returncode}\n"
+                f"STDOUT: {test.stdout}\n"
+                f"STDERR: {test.stderr}"
+            )
+            continue
+
+        # This executable actually launches. Use it.
+        os.environ["PATH"] = env["PATH"]
+        if tessdata_dir:
+            os.environ["TESSDATA_PREFIX"] = str(tessdata_dir)
+            _TESSERACT_TESSDATA_DIR = tessdata_dir
+        else:
+            _TESSERACT_TESSDATA_DIR = None
+
+        pytesseract.pytesseract.tesseract_cmd = str(path)
+        return
+
+    raise RuntimeError(
+        "No working Tesseract executable was found.\n\n"
+        "This usually means your Windows tesseract.exe is missing DLL files.\n\n"
+        "Tried:\n"
+        + "\n\n".join(tried)
+    )
+
 def ocr_profile_page(img: Image.Image) -> str:
     try:
         import pytesseract
@@ -915,18 +1039,16 @@ def ocr_profile_page(img: Image.Image) -> str:
         raise RuntimeError(
             "pytesseract is required for --data-source terminal.\n"
             "Install with:\n"
-            "  pip install pytesseract\n"
-            "  brew install tesseract"
+            "  pip install pytesseract"
         )
+
+    configure_tesseract()
 
     img = img.convert("L")
     img = img.resize((img.width * 4, img.height * 4), Image.Resampling.NEAREST)
-
-    # black/white cleanup
     img = img.point(lambda p: 255 if p > 128 else 0)
 
     return pytesseract.image_to_string(img, config="--psm 6")
-
 
 def clean_terminal_value(value: str) -> str:
     value = clean_text(value)
